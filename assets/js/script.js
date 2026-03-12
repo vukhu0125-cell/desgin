@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
       "IP: Loading...",
       "System: Loading...",
       "Bio Loading",
-      "Press Enter To Continue",
+      "Chạm để bắt đầu",
   ];
   var currentIndex = 0;
 

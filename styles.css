@@ -84,6 +84,7 @@ body {
   white-space: pre-line;
 }
 
+/* Sửa phần background từ video thành ảnh */
 #video-background {
   position: fixed;
   top: 0;
@@ -91,6 +92,10 @@ body {
   width: 100vw;
   height: 100vh;
   z-index: -1;
+  background-image: url('./assets/back/theme.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 #video-background::before {
@@ -103,12 +108,13 @@ body {
   pointer-events: none;
 }
 
-#myVideo {
+/* Xóa hoặc comment phần #myVideo */
+/* #myVideo {
   width: 100%;
   height: 100%;
   object-fit: cover;
   z-index: 0;
-}
+} */
 
 .top-left {
   top: 0;
@@ -622,7 +628,7 @@ body.video-normal #video-overlay {
   }
   
   #discord-status-dot {
-  margin-left: -120px !important;
+    margin-left: -120px !important;
   }
 
   #discord-album-art {
@@ -664,5 +670,17 @@ body.video-normal #video-overlay {
     width: 18px !important;
     height: 18px !important;
   }
-
+}
+#audio-background, 
+#music-controls,
+#volume-slider,
+#progress-container,
+#progress-bar {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
 }
