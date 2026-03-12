@@ -33,6 +33,8 @@ document.addEventListener('DOMContentLoaded', function() {
               if (currentIndex < terminalTextContent.length + 1) {
                   typeWriter();
               } else {
+                  // Thêm hiệu ứng sáng cho dòng cuối
+                  addGlowEffect();
                   addEventListeners();
               }
           }
@@ -49,6 +51,41 @@ document.addEventListener('DOMContentLoaded', function() {
       }
 
       typeChar();
+  }
+
+  // Hàm thêm hiệu ứng sáng cho chữ "Chạm để bắt đầu"
+  function addGlowEffect() {
+      // Tìm dòng chữ "Chạm để bắt đầu" trong terminal
+      const lines = terminalText.innerHTML.split('\n');
+      const lastLineIndex = lines.length - 2; // Dòng cuối cùng trước khi hết
+      
+      // Thêm span với hiệu ứng sáng
+      lines[lastLineIndex] = `<span class="glow-text">${lines[lastLineIndex]}</span>`;
+      terminalText.innerHTML = lines.join('\n');
+      
+      // Thêm CSS nếu chưa có
+      if (!document.getElementById('glow-style')) {
+          const style = document.createElement('style');
+          style.id = 'glow-style';
+          style.textContent = `
+              .glow-text {
+                  animation: simple-glow 2s ease-in-out infinite;
+                  display: inline-block;
+              }
+              
+              @keyframes simple-glow {
+                  0%, 100% {
+                      text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+                  }
+                  50% {
+                      text-shadow: 
+                          0 0 20px rgba(255, 255, 255, 1),
+                          0 0 30px rgba(255, 255, 255, 0.8);
+                  }
+              }
+          `;
+          document.head.appendChild(style);
+      }
   }
 
   function handleInput() {
@@ -206,4 +243,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
   document.body.classList.remove('video-normal');
   videoOverlay.style.display = 'block'; 
-}); 
+});
