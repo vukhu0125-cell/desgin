@@ -1,10 +1,11 @@
 const songs = [
-    "music.mp3",
+    "50 Feet.mp3",
 ];
 
 let currentSongIndex = 0;
 let isPlaying = false;
 const audio = new Audio();
+
 audio.volume = 1.0;
 
 function shuffleArray(array) {
@@ -23,53 +24,33 @@ function initMusicPlayer() {
     audio.addEventListener('ended', nextSong);
 }
 
-// QUAN TRỌNG: Sửa hàm này
 function startMusicAfterTerminal() {
     isPlaying = true;
-    
-    // Thử phát ngay lập tức - trên mobile nó sẽ hoạt động 
-    // vì được gọi từ user gesture (click)
     audio.play()
-        .then(() => {
-            console.log("Music started successfully");
-        })
         .catch(error => {
             console.error("Music playback error:", error);
-            // Nếu vẫn lỗi, thử lại sau 100ms
             setTimeout(() => {
-                audio.play().catch(e => console.log("Retry failed:", e));
-            }, 100);
+                audio.play().catch(e => console.error("Retry error:", e));
+            }, 1000);
         });
 }
 
 function loadSong(index) {
     audio.src = `./assets/music/${shuffledSongs[index]}`;
-    audio.load(); // Thêm load() để chuẩn bị
+    
+    if (isPlaying) {
+        audio.play().catch(error => console.error("Play error:", error));
+    }
 }
 
 function nextSong() {
-    if (shuffledSongs.length > 1) {
-        let newIndex;
-        do {
-            newIndex = Math.floor(Math.random() * shuffledSongs.length);
-        } while (newIndex === currentSongIndex && shuffledSongs.length > 1);
-        currentSongIndex = newIndex;
-    } else {
-        audio.currentTime = 0;
-    }
+    currentSongIndex = Math.floor(Math.random() * shuffledSongs.length);
     loadSong(currentSongIndex);
-    
-    if (isPlaying) {
-        audio.play().catch(e => console.log("Auto-play next failed:", e));
-    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     shuffledSongs = shuffleArray([...songs]);
     initMusicPlayer();
-    
-    // Preload nhạc để sẵn sàng
-    audio.load();
 });
 
 window.MusicPlayer = {
