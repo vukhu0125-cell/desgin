@@ -2,8 +2,8 @@ const NEKO_WIDTH = 32
 const NEKO_HEIGHT = 32
 const NEKO_HALF_WIDTH = NEKO_WIDTH / 2
 const NEKO_HALF_HEIGHT = NEKO_HEIGHT / 2
-const NEKO_SPEED = 20
-const FRAME_RATE = 300
+const NEKO_SPEED = 8  // Tăng speed lên 8 để chạy nhanh hơn
+const FRAME_RATE = 100 // Giảm frame rate để cập nhật nhanh hơn
 const Z_INDEX = Number.MAX_SAFE_INTEGER
 const ALERT_TIME = 3
 const IDLE_THRESHOLD = 3
@@ -45,6 +45,24 @@ class Neko {
     this.lastMouseX = 0
     this.lastMouseY = 0
     this.currentScratchSprite = null
+    
+    // Variables cho di chuyển random
+    this.targetX = this.posX
+    this.targetY = this.posY
+    this.moveCounter = 0
+    this.idleCounter = 0
+    this.isMoving = true
+    this.behaviorState = 'moving' // 'moving' hoặc 'idle'
+    this.idleAnimationList = [
+      "sleeping",
+      "scratchSelf",
+      "lickPaw",
+      "scratchWallW",
+      "scratchWallN",
+      "scratchWallE",
+      "scratchWallS"
+    ]
+    
     this.spriteSets = {
       idle: [[0, 0]],
       alert: [[7, 0]],
@@ -115,7 +133,24 @@ class Neko {
 
     this.createNekoElement()
     this.addEventListeners()
+    this.setNewRandomTarget()
     this.animationLoop()
+  }
+
+  setNewRandomTarget() {
+    // Tạo target ngẫu nhiên trong màn hình
+    this.targetX = NEKO_HALF_WIDTH + Math.random() * (window.innerWidth - NEKO_WIDTH)
+    this.targetY = NEKO_HALF_HEIGHT + Math.random() * (window.innerHeight - NEKO_HEIGHT)
+    
+    // Đảm bảo target không quá gần vị trí hiện tại
+    const distToTarget = Math.hypot(this.targetX - this.posX, this.targetY - this.posY)
+    if (distToTarget < 100) {
+      // Nếu quá gần, đặt target xa hơn
+      this.targetX = Math.min(window.innerWidth - NEKO_HALF_WIDTH, 
+        Math.max(NEKO_HALF_WIDTH, this.posX + (Math.random() * 200 - 100)))
+      this.targetY = Math.min(window.innerHeight - NEKO_HALF_HEIGHT, 
+        Math.max(NEKO_HALF_HEIGHT, this.posY + (Math.random() * 200 - 100)))
+    }
   }
 
   static async makeTransparent(imageUrl, targetColor) {
@@ -374,18 +409,107 @@ class Neko {
   }
 
   updateState() {
-    if (this.isDragging) {
+    if (this.isDragging) return
+
+    this.frameCount++
+    
+    if (this.behaviorState === 'moving') {
+      this.moveCounter++
+      this.moveRandomly()
+      
+      // Sau 5s (50 frame với FRAME_RATE=100ms) thì chuyển sang idle
+      if (this.moveCounter > 50) {
+        this.behaviorState = 'idle'
+        this.moveCounter = 0
+        this.idleCounter = 0
+        // Chọn random cử chỉ
+        this.idleAnimation = this.idleAnimationList[
+          Math.floor(Math.random() * this.idleAnimationList.length)
+        ]
+      }
+    } else if (this.behaviorState === 'idle') {
+      this.idleCounter++
+      this.performIdleAnimation()
+      
+      // Sau khi làm cử chỉ xong (khoảng 2s)
+      if (this.idleCounter > 20) {
+        this.behaviorState = 'moving'
+        this.idleAnimation = null
+        this.setNewRandomTarget()
+      }
+    }
+  }
+
+  moveRandomly() {
+    const diffX = this.targetX - this.posX
+    const diffY = this.targetY - this.posY
+    const distance = Math.hypot(diffX, diffY)
+
+    // Nếu đến gần target thì chọn target mới
+    if (distance < NEKO_SPEED) {
+      this.setNewRandomTarget()
       return
     }
 
-    this.frameCount += 1
+    // Xác định hướng di chuyển
+    let direction = ""
+    const angle = Math.atan2(diffY, diffX)
+    const deg = angle * 180 / Math.PI
+    
+    if (deg > -67.5 && deg <= -22.5) direction = "NE"
+    else if (deg > -112.5 && deg <= -67.5) direction = "N"
+    else if (deg > -157.5 && deg <= -112.5) direction = "NW"
+    else if (deg > 112.5 && deg <= 157.5) direction = "SW"
+    else if (deg > 67.5 && deg <= 112.5) direction = "S"
+    else if (deg > 22.5 && deg <= 67.5) direction = "SE"
+    else if (deg > -22.5 && deg <= 22.5) direction = "E"
+    else direction = "W"
 
-    if (this.isReturningToOrigin) {
-      this.moveToInitialPosition()
-    } else if (this.isFollowing) {
-      this.followMouse()
-    } else {
-      this.idleBehavior()
+    this.setSprite(direction, this.frameCount)
+
+    // Di chuyển
+    const moveX = (diffX / distance) * NEKO_SPEED
+    const moveY = (diffY / distance) * NEKO_SPEED
+    
+    this.posX += moveX
+    this.posY += moveY
+
+    // Giới hạn trong màn hình
+    this.posX = Math.max(NEKO_HALF_WIDTH, Math.min(this.posX, window.innerWidth - NEKO_HALF_WIDTH))
+    this.posY = Math.max(NEKO_HALF_HEIGHT, Math.min(this.posY, window.innerHeight - NEKO_HALF_HEIGHT))
+  }
+
+  performIdleAnimation() {
+    if (!this.idleAnimation) return
+
+    switch (this.idleAnimation) {
+      case "sleeping":
+        if (this.idleCounter < 5) {
+          this.setSprite("tired", 0)
+        } else if (this.idleCounter < 10) {
+          this.setSprite("idle", 0)
+        } else {
+          this.setSprite("sleeping", Math.floor(this.idleCounter / 4) % 2)
+        }
+        break
+      case "lickPaw":
+        this.setSprite("lickPaw", 0)
+        break
+      case "scratchSelf":
+        this.setSprite("scratchSelf", this.idleCounter % 2)
+        break
+      case "scratchWallN":
+        this.setSprite("scratchWallN", this.idleCounter % 2)
+        break
+      case "scratchWallS":
+        this.setSprite("scratchWallS", this.idleCounter % 2)
+        break
+      case "scratchWallE":
+        this.setSprite("scratchWallE", this.idleCounter % 2)
+        break
+      case "scratchWallW":
+        this.setSprite("scratchWallW", this.idleCounter % 2)
+        break
     }
   }
 
@@ -403,136 +527,8 @@ class Neko {
     if (sprite) {
       const posX = sprite[0] * (NEKO_WIDTH + SPRITE_GAP)
       const posY = sprite[1] * (NEKO_HEIGHT + SPRITE_GAP)
-
       this.nekoElement.style.backgroundPosition = `-${posX}px -${posY}px`
     }
-  }
-
-  resetIdleAnimation() {
-    this.idleAnimation = null
-    this.idleAnimationFrame = 0
-  }
-
-  idleBehavior() {
-    this.idleTime += 1
-
-    if (
-      this.idleTime > IDLE_THRESHOLD &&
-      Math.random() < IDLE_ANIMATION_CHANCE &&
-      this.idleAnimation == null
-    ) {
-      const availableIdleAnimations = [
-        "sleeping",
-        "scratchSelf",
-        "lickPaw",
-        "scratchWallW",
-        "scratchWallN",
-        "scratchWallE",
-        "scratchWallS"
-      ]
-
-      this.idleAnimation =
-        availableIdleAnimations[
-          Math.floor(Math.random() * availableIdleAnimations.length)
-        ] || null
-    }
-
-    switch (this.idleAnimation) {
-      case "sleeping":
-        if (this.idleAnimationFrame < 8) {
-          this.setSprite("tired", 0)
-          break
-        } else if (this.idleAnimationFrame < 16) {
-          this.setSprite("idle", 0)
-          break
-        }
-        this.setSprite("sleeping", Math.floor(this.idleAnimationFrame / 4))
-        if (this.idleAnimationFrame > 192) {
-          this.resetIdleAnimation()
-        }
-        break
-      case "lickPaw":
-        this.setSprite("lickPaw", 0)
-        if (this.idleAnimationFrame > 4) {
-          this.resetIdleAnimation()
-        }
-        break
-      case "scratchWallN":
-      case "scratchWallS":
-      case "scratchWallE":
-      case "scratchWallW":
-      case "scratchSelf":
-        this.setSprite(this.idleAnimation, this.idleAnimationFrame)
-        if (this.idleAnimationFrame > 9) {
-          this.resetIdleAnimation()
-        }
-        break
-      default:
-        this.setSprite("idle", 0)
-        return
-    }
-    this.idleAnimationFrame += 1
-  }
-
-  followMouse() {
-    // Tính khoảng cách giữa mèo và chuột
-    const diffX = this.posX - this.mouseX;
-    const diffY = this.posY - this.mouseY;
-    const distance = Math.hypot(diffX, diffY);
-
-    if (distance < 50) {
-      this.setSprite("alert", 0);
-    }
-
-    if (distance < MIN_DISTANCE) {
-      this.idleBehavior();
-      return;
-    }
-
-    // Reset trạng thái idle
-    this.idleAnimation = null;
-    this.idleAnimationFrame = 0;
-
-    let direction = "";
-    direction += diffY > 0 ? "N" : "";
-    direction += diffY < 0 ? "S" : "";
-    direction += diffX > 0 ? "W" : "";
-    direction += diffX < 0 ? "E" : "";
-
-    this.setSprite(direction, this.frameCount);
-
-    const moveX = (diffX / distance) * NEKO_SPEED;
-    const moveY = (diffY / distance) * NEKO_SPEED;
-    
-    this.posX -= moveX;
-    this.posY -= moveY;
-
-    this.posX = Math.max(NEKO_HALF_WIDTH, Math.min(this.posX, window.innerWidth - NEKO_HALF_WIDTH));
-    this.posY = Math.max(NEKO_HALF_HEIGHT, Math.min(this.posY, window.innerHeight - NEKO_HALF_HEIGHT));
-  }
-
-  moveToInitialPosition() {
-    const diffX = this.posX - this.initialPosX
-    const diffY = this.posY - this.initialPosY
-    const distance = Math.hypot(diffX, diffY)
-
-    if (distance < NEKO_SPEED) {
-      this.posX = this.initialPosX
-      this.posY = this.initialPosY
-      this.isReturningToOrigin = false
-      this.idleBehavior()
-      return
-    }
-
-    let direction = ""
-    direction += diffY / distance > 0.5 ? "N" : ""
-    direction += diffY / distance < -0.5 ? "S" : ""
-    direction += diffX / distance > 0.5 ? "W" : ""
-    direction += diffX / distance < -0.5 ? "E" : ""
-    this.setSprite(direction, this.frameCount)
-
-    this.posX -= (diffX / distance) * NEKO_SPEED
-    this.posY -= (diffY / distance) * NEKO_SPEED
   }
 
   destroy() {
